@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Auth Portfolio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cyan-blue: #1DA1F2;
+            --bg-color: #F5F8FA;
+            --text-dark: #14171A;
+            --white: #FFFFFF;
+        }
+
+        * {
+            box-sizing: border-box; margin: 0; padding: 0;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; color: var(--text-dark);
+        }
+
+        .auth-container {
+            background-color: var(--white); padding: 40px;
+            border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 100%; max-width: 400px; text-align: center;
+        }
+
+        .auth-container h2 { margin-bottom: 24px; color: var(--cyan-blue); font-weight: 700; }
+
+        .form-group { margin-bottom: 16px; text-align: left; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 700; }
+        .form-group input {
+            width: 100%; padding: 12px; border: 1px solid #ccd6dd;
+            border-radius: 6px; font-size: 16px; transition: border-color 0.2s;
+        }
+        .form-group input:focus { outline: none; border-color: var(--cyan-blue); }
+
+        .captcha-group { background: #e8f5fd; padding: 12px; border-radius: 6px; margin-bottom: 16px; }
+
+        button {
+            width: 100%; padding: 14px; background-color: var(--cyan-blue);
+            color: var(--white); border: none; border-radius: 9999px;
+            font-size: 16px; font-weight: 700; cursor: pointer;
+            transition: background-color 0.2s; margin-top: 10px;
+        }
+        button:hover { background-color: #1a91da; }
+
+        .toggle-text { margin-top: 20px; font-size: 14px; }
+        .toggle-text a { color: var(--cyan-blue); text-decoration: none; cursor: pointer; }
+        .toggle-text a:hover { text-decoration: underline; }
+        #messageBox { margin-top: 16px; font-size: 14px; min-height: 20px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="auth-container">
+        <h2 id="formTitle">Login</h2>
+        
+        <form id="authForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" required autocomplete="current-password">
+            </div>
+            
+            <div class="form-group captcha-group">
+                <label id="captchaLabel" for="captchaInput">What is X + Y?</label>
+                <input type="number" id="captchaInput" required placeholder="Enter answer to prove you are human">
+            </div>
+
+            <button type="submit" id="submitBtn">Log In</button>
+        </form>
+
+        <div id="messageBox"></div>
+
+        <p class="toggle-text">
+            <span id="toggleQuestion">Don't have an account?</span> 
+            <a id="toggleMode">Register here</a>
+        </p>
+    </div>
+
+    <script>
+        let isLoginMode = true;
+        let captchaAnswer = 0;
+
+        const formTitle = document.getElementById('formTitle');
+        const submitBtn = document.getElementById('submitBtn');
+        const toggleQuestion = document.getElementById('toggleQuestion');
+        const toggleMode = document.getElementById('toggleMode');
+        const authForm = document.getElementById('authForm');
+        const messageBox = document.getElementById('messageBox');
+        const captchaLabel = document.getElementById('captchaLabel');
+        const captchaInput = document.getElementById('captchaInput');
+
+        // Generate a random Math Captcha
+        function generateCaptcha() {
+            const num1 = Math.floor(Math.random() * 10) + 1;
+            const num2 = Math.floor(Math.random() * 10) + 1;
+            captchaAnswer = num1 + num2;
+            captchaLabel.textContent = `Security Check: What is ${num1} + ${num2}?`;
+            captchaInput.value = ''; // Clear previous input
+        }
+
+        // Initialize Captcha on page load
+        generateCaptcha();
+
+        // Toggle UI
+        toggleMode.addEventListener('click', () => {
+            isLoginMode = !isLoginMode;
+            formTitle.textContent = isLoginMode ? 'Login' : 'Create Account';
+            submitBtn.textContent = isLoginMode ? 'Log In' : 'Sign Up';
+            toggleQuestion.textContent = isLoginMode ? "Don't have an account?" : "Already have an account?";
+            toggleMode.textContent = isLoginMode ? "Register here" : "Log in here";
+            messageBox.textContent = '';
+            generateCaptcha(); // Refresh captcha on toggle
+        });
+
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Check CAPTCHA first!
+            if (parseInt(captchaInput.value) !== captchaAnswer) {
+                messageBox.style.color = '#E0245E';
+                messageBox.textContent = 'Incorrect security check answer. Try again.';
+                generateCaptcha();
+                return;
+            }
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const endpoint = isLoginMode ? 'http://localhost:3000/login' : 'http://localhost:3000/register';
+
+            messageBox.style.color = 'var(--text-dark)';
+            messageBox.textContent = 'Processing...';
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    messageBox.style.color = '#17BF63';
+                    messageBox.textContent = data.message;
+                    
+                    if (!isLoginMode) {
+                        setTimeout(() => toggleMode.click(), 1500); 
+                    } else {
+                        generateCaptcha(); // Refresh for next login attempt
+                    }
+                } else {
+                    messageBox.style.color = '#E0245E';
+                    messageBox.textContent = data.error; // Will now say "Incorrect username or password"
+                    generateCaptcha(); // Force them to solve a new captcha on failure
+                }
+            } catch (error) {
+                messageBox.style.color = '#E0245E';
+                messageBox.textContent = 'Network error. Make sure the server is running.';
+            }
+        });
+    </script>
+</body>
+</html>
